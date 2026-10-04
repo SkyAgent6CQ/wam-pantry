@@ -113,7 +113,7 @@ function summarize(findings) {
 }
 
 function toMarkdown(summary, meta = {}) {
-  const row = (f) => `| ${f.decision} | ${f.severity} | ${f.type} | ${f.tool} | ${f.id} | ${f.pkg} | ${f.title.replace(/\|/g, '/')} | ${f.fixedVersion || (f.fixAvailable ? 'yes' : 'no fix yet')} |`;
+  const row = (f) => `| ${f.decision} | ${f.severity} | ${f.type} | ${f.tool} | ${f.id} | ${f.pkg} | ${f.title.replaceAll('|', '/')} | ${f.fixedVersion || (f.fixAvailable ? 'yes' : 'no fix yet')} |`;
   const notable = summary.findings.filter((f) => f.decision !== 'INFO');
   return [
     `# Security scan summary${meta.version ? ` — ${meta.version}` : ''}`,
@@ -139,7 +139,7 @@ function toMarkdown(summary, meta = {}) {
 }
 
 function toHtml(markdown) {
-  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const esc = (s) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
   return `<!doctype html><html><head><meta charset="utf-8"><title>Security summary</title>
 <style>body{font-family:system-ui,sans-serif;margin:2rem;max-width:1100px}pre{white-space:pre-wrap;font-size:13px;line-height:1.45}</style>
 </head><body><pre>${esc(markdown)}</pre></body></html>`;

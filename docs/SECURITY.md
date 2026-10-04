@@ -33,6 +33,20 @@ Suppressions go in `.trivyignore`, and every entry needs a reason and a review d
 | _add your run_ | Trivy image results (Alpine base / Node runtime) | | | Fill in from the "Security Summary" report in Jenkins |
 | _add your run_ | Trivy misconfig: Jenkins container runs as root (`infra/`) | | Lab tooling | **REVIEW / accepted**: required to use the host Docker socket in a single-machine lab. In real infrastructure use dedicated build agents or rootless Docker/Kaniko. |
 
+## SonarQube findings (Code Quality stage) and how they were resolved
+
+The first pipeline run (build #1) failed the quality gate: **Reliability E** and **Security B**. All 18 findings were in the pipeline scripts (`scripts/`), not in the application code.
+
+| Rule | Count | Quality / severity | Issue | Resolution |
+|---|---|---|---|---|
+| S2189 | 1 | Reliability / Blocker | `while (running)` loop in the incident drill: the analyzer could not see the flag changing (it was changed from another closure), so it reported a possible infinite loop | Rewritten with `setInterval` / `clearInterval`, which is simpler and has no loop at all |
+| S7723 | 2 | Reliability / Low | `Array(n)` without `new` | Replaced with `Array.from({ length: n }, ...)` |
+| S7781 | 4 | Reliability / Low | `String#replace` with a global regex | Replaced with `String#replaceAll` (Node 22) |
+| S4036 | 2 | Security / Low | `git` and `docker` resolved through `PATH`, so a writable directory on PATH could substitute a malicious binary | Invoked by absolute path (`/usr/bin/git`, `/usr/bin/docker`), overridable via `GIT_BIN` / `DOCKER_BIN` |
+| S5332 | 9 | Security / Low | Plain `http://` URLs for Prometheus, Alertmanager, Grafana and the app containers | Centralized in `scripts/lib/endpoints.js`. Internal traffic stays on the private `devops-net` bridge network on one host and the lab services do not terminate TLS, so plain HTTP is an accepted, documented risk for this environment; the scheme is configurable (`INTERNAL_SCHEME=https`) for a real deployment behind a TLS proxy or service mesh |
+
+This version of SonarQube converts former Security Hotspots into regular security issues, which is why transport-level findings count toward the Security rating.
+
 ## Preventive controls in the application
 
 - **Authentication:** bcrypt password hashing, JWTs signed with a 32+ character secret from Jenkins credentials, with an issuer claim and expiry.

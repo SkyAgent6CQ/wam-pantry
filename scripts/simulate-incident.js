@@ -11,31 +11,27 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { pollUntil, activeAlerts, fetchJson, sleep } = require('./lib/ops');
+const { pollUntil, activeAlerts, fetchJson } = require('./lib/ops');
+const { ALERTMANAGER_URL: AM, APP_URLS, DOCKER_BIN } = require('./lib/endpoints');
 
-const AM = process.env.ALERTMANAGER_URL || 'http://alertmanager:9093';
 const DRILLS = {
-  'app-down': { alert: 'PantryApiDown', env: 'production', container: 'pantry-prod', url: 'http://pantry-prod:3000' },
-  'error-rate': { alert: 'PantryHighErrorRate', env: 'staging', container: 'pantry-staging', url: 'http://pantry-staging:3000' },
+  'app-down': { alert: 'PantryApiDown', env: 'production', container: 'pantry-prod', url: APP_URLS.production },
+  'error-rate': { alert: 'PantryHighErrorRate', env: 'staging', container: 'pantry-staging', url: APP_URLS.staging },
 };
 
 const isFiring = async (alert, env) => (await activeAlerts(AM, alert)).some((a) => a.labels.env === env);
 const log = (msg) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${msg}`);
 
 function docker(...args) {
-  execFileSync('docker', args, { stdio: 'inherit' });
+  execFileSync(DOCKER_BIN, args, { stdio: 'inherit' });
 }
 
-/** Starts sending failing requests in the background; returns a stop() function. */
+/** Sends 5 failing requests every second in the background; returns a stop() function. */
 function startErrorFlood(url) {
-  let running = true;
-  (async () => {
-    while (running) {
-      await Promise.all(Array.from({ length: 5 }, () => fetch(`${url}/api/chaos/error`).catch(() => null)));
-      await sleep(1000);
-    }
-  })();
-  return () => { running = false; };
+  const burst = () => Array.from({ length: 5 }, () => fetch(`${url}/api/chaos/error`).catch(() => null));
+  const timer = setInterval(burst, 1000);
+  burst();
+  return () => clearInterval(timer);
 }
 
 async function run(type) {

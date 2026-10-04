@@ -8,8 +8,7 @@
  *   node scripts/notify.js <success|failure|unstable>
  */
 const { postAlert, fetchJson } = require('./lib/ops');
-
-const AM = process.env.ALERTMANAGER_URL || 'http://alertmanager:9093';
+const { ALERTMANAGER_URL: AM } = require('./lib/endpoints');
 const status = process.argv[2] || 'unknown';
 const { JOB_NAME = 'local', BUILD_NUMBER = '0', BUILD_URL = '', VERSION = 'unknown', FAILED_STAGE = '' } = process.env;
 

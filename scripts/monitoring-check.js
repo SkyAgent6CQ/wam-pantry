@@ -13,12 +13,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { fetchJson, pollUntil, promQuery, activeAlerts, postAlert } = require('./lib/ops');
+const endpoints = require('./lib/endpoints');
 
 const ENV = process.env.MONITOR_ENV || 'production';
-const PROM = process.env.PROMETHEUS_URL || 'http://prometheus:9090';
-const AM = process.env.ALERTMANAGER_URL || 'http://alertmanager:9093';
-const GRAFANA = process.env.GRAFANA_URL || 'http://grafana:3000';
-const APP = process.env.APP_URL || (ENV === 'production' ? 'http://pantry-prod:3000' : 'http://pantry-staging:3000');
+const PROM = endpoints.PROMETHEUS_URL;
+const AM = endpoints.ALERTMANAGER_URL;
+const GRAFANA = endpoints.GRAFANA_URL;
+const APP = process.env.APP_URL || endpoints.APP_URLS[ENV] || endpoints.APP_URLS.production;
 const VERSION = process.env.VERSION || 'unknown';
 const EXPECTED_RULES = ['PantryApiDown', 'PantryHighErrorRate', 'PantryHighLatency', 'PantryLowStock', 'PantryHighMemory'];
 
@@ -37,7 +38,8 @@ async function check(name, fn) {
 }
 
 async function generateTraffic() {
-  const paths = [...Array(30).fill('/api/items'), ...Array(10).fill('/health'), '/api/version', '/api/items?category=dry', '/not-a-route'];
+  const repeat = (value, times) => Array.from({ length: times }, () => value);
+  const paths = [...repeat('/api/items', 30), ...repeat('/health', 10), '/api/version', '/api/items?category=dry', '/not-a-route'];
   await Promise.all(paths.map((p) => fetch(`${APP}${p}`).catch(() => null)));
   return `${paths.length} requests sent to ${APP}`;
 }
