@@ -8,8 +8,6 @@ services:
     env_file:
       - ./env/${APP_ENV:?APP_ENV is required}.env # environment-specific, non-secret config
     environment:
-      APP_VERSION: ${APP_VERSION:-dev}
-      GIT_COMMIT: ${GIT_COMMIT:-unknown}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required} # injected from Jenkins credentials
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
     ports:
