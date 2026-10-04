@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 5s         # short intervals so demos/alerts react quickly
+  evaluation_interval: 5s
+  external_labels:
+    monitor: wam-pantry
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+rule_files:
+  - /etc/prometheus/alert.rules.yml
+
+scrape_configs:
+  - job_name: pantry-api
+    metrics_path: /metrics
+    honor_labels: true        # keep the app's own env/app labels
+    static_configs:
+      - targets: ["pantry-prod:3000"]
+        labels: { env: production }
+      - targets: ["pantry-staging:3000"]
+        labels: { env: staging }
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]

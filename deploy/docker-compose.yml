@@ -1,0 +1,43 @@
+# Application deployment used for BOTH staging and production.
+# The environment is selected by variables exported from scripts/deploy.sh:
+#   APP_IMAGE, APP_ENV, CONTAINER_NAME, HOST_PORT, APP_VERSION, JWT_SECRET, ADMIN_PASSWORD
+services:
+  api:
+    image: ${APP_IMAGE:?APP_IMAGE is required}
+    container_name: ${CONTAINER_NAME:?CONTAINER_NAME is required}
+    env_file:
+      - ./env/${APP_ENV:?APP_ENV is required}.env # environment-specific, non-secret config
+    environment:
+      APP_VERSION: ${APP_VERSION:-dev}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required} # injected from Jenkins credentials
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+    ports:
+      - "${HOST_PORT:?HOST_PORT is required}:3000"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    labels:
+      com.wam.environment: ${APP_ENV}
+    networks:
+      - devops-net
+
+networks:
+  devops-net:
+    external: true

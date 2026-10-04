@@ -1,0 +1,9 @@
+node_modules/
+coverage/
+reports/
+dist/
+.scannerwork/
+*.tar
+*.tgz
+infra/.env
+.env

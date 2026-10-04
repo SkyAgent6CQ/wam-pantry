@@ -1,0 +1,6 @@
+# Trivy ignore list. Every entry MUST have a justification and a review date.
+# Format:  <CVE/rule-id>   # reason — owner — review-by
+#
+# (No suppressions at present. Dev-only findings such as node-forge via
+#  @sonar/scan are not shipped and are handled by the REVIEW policy in
+#  scripts/security-summary.js instead of being hidden here.)

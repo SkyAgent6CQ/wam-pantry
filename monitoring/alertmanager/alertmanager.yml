@@ -1,0 +1,27 @@
+# Routes every alert to the team notifier. Critical alerts re-notify every
+# 5 minutes until resolved; informational ones once per 12h.
+route:
+  receiver: team
+  group_by: ["alertname", "env"]
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 4h
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: team
+      repeat_interval: 5m
+    - matchers: ['severity="info"']
+      receiver: team
+      repeat_interval: 12h
+
+receivers:
+  - name: team
+    webhook_configs:
+      - url: http://alert-notifier:9095/alerts
+        send_resolved: true
+
+# If the API is down, don't also page for its error rate/latency (noise reduction).
+inhibit_rules:
+  - source_matchers: ['alertname="PantryApiDown"']
+    target_matchers: ['alertname=~"PantryHighErrorRate|PantryHighLatency"']
+    equal: ["env"]

@@ -1,0 +1,58 @@
+# Monitoring & alerting stack. Configuration files are COPY'd into small custom
+# images (see each Dockerfile) instead of bind-mounted, so the stack can be
+# started from inside the Jenkins container via the host Docker socket.
+services:
+  prometheus:
+    build: ./prometheus
+    image: wam/prometheus:local
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    ports: ["9090:9090"]
+    volumes: [prometheus-data:/prometheus]
+    restart: unless-stopped
+    networks: [devops-net]
+
+  alertmanager:
+    build: ./alertmanager
+    image: wam/alertmanager:local
+    container_name: alertmanager
+    ports: ["9093:9093"]
+    restart: unless-stopped
+    networks: [devops-net]
+
+  alert-notifier:
+    build: ./notifier
+    image: wam/alert-notifier:local
+    container_name: alert-notifier
+    environment:
+      # Optional: Slack/Discord/Teams incoming-webhook URL. Leave empty to only use the built-in inbox.
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+    ports: ["9095:9095"]
+    restart: unless-stopped
+    networks: [devops-net]
+
+  grafana:
+    build: ./grafana
+    image: wam/grafana:local
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/wam-pantry.json
+    ports: ["3030:3000"]
+    volumes: [grafana-data:/var/lib/grafana]
+    restart: unless-stopped
+    depends_on: [prometheus]
+    networks: [devops-net]
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  devops-net:
+    external: true

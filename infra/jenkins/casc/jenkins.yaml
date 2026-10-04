@@ -1,0 +1,71 @@
+# Jenkins Configuration as Code: admin user, credentials, SonarQube server and
+# the pipeline job are all created automatically on startup. Values like
+# ${SONAR_TOKEN} come from infra/.env via docker compose.
+jenkins:
+  systemMessage: "WAM Pantry CI/CD — SIT223 7.3HD (configured as code)"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "http://localhost:8080/"
+  sonarGlobalConfiguration:
+    buildWrapperEnabled: true
+    installations:
+      - name: "SonarQube"
+        serverUrl: "http://sonarqube:9000"
+        credentialsId: "sonar-token"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              id: "sonar-token"
+              description: "SonarQube analysis token"
+              secret: "${SONAR_TOKEN}"
+          - string:
+              id: "jwt-secret"
+              description: "JWT signing secret for staging/production"
+              secret: "${APP_JWT_SECRET}"
+          - string:
+              id: "app-admin-password"
+              description: "WAM Pantry admin password for staging/production"
+              secret: "${APP_ADMIN_PASSWORD}"
+          - usernamePassword:
+              id: "github-creds"
+              description: "GitHub user + personal access token (clone private repo / push tags)"
+              username: "${GITHUB_USER:-none}"
+              password: "${GITHUB_TOKEN:-none}"
+              scope: GLOBAL
+
+jobs:
+  - script: |
+      def repo = System.getenv('REPO_URL') ?: 'https://github.com/CHANGE-ME/wam-pantry.git'
+      def hasToken = (System.getenv('GITHUB_TOKEN') ?: '').trim()
+      pipelineJob('wam-pantry') {
+        description('WAM Pantry API: Build → Test → Code Quality → Security → Deploy → Release → Monitoring')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url(repo)
+                  if (hasToken) { credentials('github-creds') }
+                }
+                branch('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }

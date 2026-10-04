@@ -1,0 +1,17 @@
+node_modules
+coverage
+reports
+.scannerwork
+.git
+.github
+tests
+docs
+infra
+monitoring
+deploy
+scripts
+Jenkinsfile
+*.md
+*.tar
+*.tgz
+.env*

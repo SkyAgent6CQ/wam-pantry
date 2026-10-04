@@ -1,0 +1,49 @@
+# CI/CD infrastructure: Jenkins, SonarQube and a private Docker registry.
+# Start it with:  ./infra/bootstrap.sh   (creates the network, configures SonarQube, starts Jenkins)
+services:
+  jenkins:
+    build: ./jenkins
+    image: wam/jenkins:local
+    container_name: jenkins
+    # Runs as root ONLY so the controller can use the host Docker socket in this
+    # local lab. Accepted risk, documented in docs/SECURITY.md.
+    user: root
+    ports: ["8080:8080"]
+    env_file: .env
+    volumes:
+      - jenkins-home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks: [devops-net]
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    ports: ["9000:9000"]
+    volumes:
+      - sonar-data:/opt/sonarqube/data
+      - sonar-extensions:/opt/sonarqube/extensions
+      - sonar-logs:/opt/sonarqube/logs
+    restart: unless-stopped
+    networks: [devops-net]
+
+  registry:
+    image: registry:2
+    container_name: registry
+    ports: ["5000:5000"]
+    volumes: [registry-data:/var/lib/registry]
+    restart: unless-stopped
+    networks: [devops-net]
+
+volumes:
+  jenkins-home:
+  sonar-data:
+  sonar-extensions:
+  sonar-logs:
+  registry-data:
+
+networks:
+  devops-net:
+    external: true

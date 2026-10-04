@@ -1,0 +1,61 @@
+groups:
+  - name: wam-pantry-availability
+    rules:
+      - alert: PantryApiDown
+        expr: up{job="pantry-api"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "WAM Pantry API ({{ $labels.env }}) is DOWN"
+          description: "Prometheus cannot scrape {{ $labels.instance }} for more than 30s. Students cannot book pickups."
+          runbook: "docker ps -a | grep pantry; docker logs pantry-prod; re-run Jenkins or scripts/rollback.sh production"
+
+  - name: wam-pantry-performance
+    rules:
+      - alert: PantryHighErrorRate
+        expr: |
+          (
+            sum by (env) (rate(http_requests_total{job="pantry-api",status=~"5.."}[1m]))
+            /
+            sum by (env) (rate(http_requests_total{job="pantry-api"}[1m]))
+          ) > 0.05
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate in {{ $labels.env }}: {{ $value | humanizePercentage }}"
+          description: "More than 5% of requests are failing with server errors."
+          runbook: "Check logs for 'unhandled_error'; roll back if it started after a release."
+
+      - alert: PantryHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, env) (rate(http_request_duration_seconds_bucket{job="pantry-api", route!="/metrics"}[2m]))
+          ) > 0.5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency above 500ms in {{ $labels.env }} ({{ $value | humanizeDuration }})"
+          description: "Users are experiencing slow responses."
+
+      - alert: PantryHighMemory
+        expr: process_resident_memory_bytes{job="pantry-api"} > 200 * 1024 * 1024
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory above 200MB in {{ $labels.env }} (limit is 256MB)"
+          description: "Container may be OOM-killed soon; investigate leaks or raise the limit."
+
+  - name: wam-pantry-business
+    rules:
+      - alert: PantryLowStock
+        expr: pantry_items_low_stock{env="production"} > 0
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "{{ $value }} pantry item(s) at or below the low-stock threshold"
+          description: "Volunteers should restock or source donations (see /api/items/low-stock)."
