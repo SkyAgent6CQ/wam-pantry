@@ -107,3 +107,4 @@ infra/               Jenkins image + Configuration as Code, SonarQube, registry,
 - **Quality gate step waits until timeout**: the SonarQube webhook must point to `http://jenkins:8080/sonarqube-webhook/` (bootstrap creates it; check under SonarQube → Administration → Webhooks).
 - **Port already in use**: something else is on 3000/3001/8080/9000; stop it or change the published port.
 - **Apple Silicon**: all images used are multi-arch; first builds are slower.
+
